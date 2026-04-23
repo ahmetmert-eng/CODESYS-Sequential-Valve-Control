@@ -14,5 +14,7 @@ Sistem, 3 adet valfin (pistonun) belirli zaman aralıklarıyla ardışık olarak
 3. Döngü, operatör müdahalesi olana kadar devam eder.
 4. **Güvenli Duruş (Stop):** Stop butonuna basıldığında sistem anında enerjiyi kesmez; valfleri 1, 2 ve 3 sırasıyla güvenli (Home) pozisyonuna çeker.
 
-## 📺 Sistem Simülasyonu ve HMI
-[Buraya hazırladığın HMI ekran görüntüsünü veya çalışan sistemin GIF'ini sürükleyip bırak]
+
+
+
+
