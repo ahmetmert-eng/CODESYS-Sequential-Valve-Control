@@ -1,0 +1,196 @@
+PROGRAM PLC_PRG
+VAR
+Pkenar1: R_TRIG;
+Pkenar2: R_TRIG;
+Pkenar3: R_TRIG;
+makine: BOOL;
+sayi: INT := 0;
+startbut1: BOOL;
+startbut2: BOOL;
+startbut3: BOOL;
+stopbut: BOOL;
+TIMER1: TOF;
+TIMER2: TOF;
+ TIMER3: TOF;
+    TIMER4: TON;
+    valf1_ileri: BOOL;
+    valf1_geri: BOOL;
+    valf2_ileri: BOOL;
+    valf2_geri: BOOL;
+    valf3_ileri: BOOL;
+    valf3_geri: BOOL;	
+
+
+
+END_VAR
+
+Pkenar1(CLK:=startbut1);
+Pkenar2(CLK:=startbut2);
+Pkenar3(CLK:=startbut3);
+
+// 2. TOF ile 10 Saniyelik Hafıza 
+TIMER1(IN:=Pkenar1.Q, PT:=T#10S);
+TIMER2(IN:=Pkenar2.Q, PT:=T#10S);
+TIMER3(IN:=Pkenar3.Q, PT:=T#10S);
+
+// 3. Makineyi Başlatma ve Durdurma (Mühürleme)
+// 10 saniye içinde üç timer da aktifse makineyi çalıştır
+IF TIMER1.Q AND TIMER2.Q AND TIMER3.Q AND NOT stopbut THEN
+    makine := TRUE;
+END_IF
+
+// Stop butonuna basılırsa makineyi durdur
+IF stopbut THEN
+    makine := FALSE;
+END_IF
+
+// 4. STOP Şartı: Makine durdurulduysa ve sistem çalışıyorsa, sırayla geri çekme adımına atla
+IF NOT makine AND sayi > 0 AND sayi < 100 THEN
+    sayi := 100; // Geri çekme sekansının başı
+    TIMER4(IN:=FALSE); // Yarım kalan süreyi sıfırla
+END_IF
+
+// 5. CASE Makine Adımları 
+CASE sayi OF
+    0: // Bekleme ve Sıfırlama
+        valf1_ileri:=FALSE;
+        valf2_ileri:=FALSE;
+        valf3_ileri:=FALSE;
+        valf1_geri:=FALSE;
+        valf2_geri:=FALSE;
+        valf3_geri:=FALSE;
+        TIMER4(IN:=FALSE);
+        
+        IF makine THEN
+            sayi:=10;
+        END_IF
+
+    10: // Valf 1 İleri (2 sn)
+        valf1_ileri:=TRUE;
+        valf2_ileri:=FALSE;
+        valf3_ileri:=FALSE;
+        valf1_geri:=FALSE;
+        valf2_geri:=FALSE;
+        valf3_geri:=FALSE;
+        TIMER4(IN:=TRUE, PT:=T#2S);
+        IF TIMER4.Q THEN
+            TIMER4.IN:=FALSE;
+            sayi:=20;
+        END_IF
+
+    20: // Valf 2 İleri (1 sn)
+        valf1_ileri:=FALSE; 
+        valf2_ileri:=TRUE;
+        valf3_ileri:=FALSE;
+        valf1_geri:=FALSE;
+        valf2_geri:=FALSE;
+        valf3_geri:=FALSE;
+        TIMER4(IN:=TRUE, PT:=T#1S);
+        IF TIMER4.Q THEN
+            TIMER4.IN:=FALSE;
+            sayi:=30;
+        END_IF
+
+    30: // Valf 1 Geri (1 sn)
+        valf1_ileri:=FALSE;
+        valf2_ileri:=FALSE;
+        valf3_ileri:=FALSE;
+        valf1_geri:=TRUE;
+        valf2_geri:=FALSE;
+        valf3_geri:=FALSE;
+        TIMER4(IN:=TRUE, PT:=T#1S);
+        IF TIMER4.Q THEN
+            TIMER4.IN:=FALSE;
+            sayi:=40;
+        END_IF
+
+    40: // Valf 3 İleri (1.5 sn)
+        valf1_ileri:=FALSE;
+        valf2_ileri:=FALSE;
+        valf3_ileri:=TRUE;
+        valf1_geri:=FALSE;
+        valf2_geri:=FALSE;
+        valf3_geri:=FALSE;
+        TIMER4(IN:=TRUE, PT:=T#1500MS);
+        IF TIMER4.Q THEN
+            TIMER4.IN:=FALSE;
+            sayi:=50;
+        END_IF
+
+    50: // Valf 2 Geri (1 sn)
+        valf1_ileri:=FALSE;
+        valf2_ileri:=FALSE;
+        valf3_ileri:=FALSE;
+        valf1_geri:=FALSE;
+        valf2_geri:=TRUE;
+        valf3_geri:=FALSE;
+        TIMER4(IN:=TRUE, PT:=T#1S);
+        IF TIMER4.Q THEN
+            TIMER4.IN:=FALSE;
+            sayi:=60;
+        END_IF
+
+   60: // Valf 3 Geri (1 sn)
+    valf1_ileri:=FALSE;
+    valf1_geri:=FALSE;
+    valf2_ileri:=FALSE;
+    valf2_geri:=FALSE;
+    valf3_ileri:=FALSE;
+    valf3_geri:=TRUE;
+    
+    TIMER4(IN:=TRUE, PT:=T#1S);
+    IF TIMER4.Q THEN
+        TIMER4(IN:=FALSE);
+        sayi:=65; 
+    END_IF
+
+65: // Timer Reset ve Basa Sarma Adimi
+    TIMER4(IN:=FALSE); 
+    sayi:=10; 
+
+    // --- STOP OLDUĞUNDA SIRAYLA 1-2-3 GERİ ÇEKME ADIMLARI ---
+    100: // Valf 1 Geri 
+        valf1_ileri:=FALSE;
+        valf2_ileri:=FALSE;
+        valf3_ileri:=FALSE;
+        valf1_geri:=TRUE; // V1 Geri
+        valf2_geri:=FALSE;
+        valf3_geri:=FALSE;
+        TIMER4(IN:=TRUE, PT:=T#1S);
+        IF TIMER4.Q THEN
+            TIMER4.IN:=FALSE;
+            sayi:=110;
+        END_IF
+
+    110: // Valf 2 Geri 
+        valf1_ileri:=FALSE;
+        valf2_ileri:=FALSE;
+        valf3_ileri:=FALSE;
+        valf1_geri:=FALSE;
+        valf2_geri:=TRUE; // V2 Geri
+        valf3_geri:=FALSE;
+        TIMER4(IN:=TRUE, PT:=T#1S);
+        IF TIMER4.Q THEN
+            TIMER4.IN:=FALSE;
+            sayi:=120;
+        END_IF
+
+    120: // Valf 3 Geri 
+        valf1_ileri:=FALSE;
+        valf2_ileri:=FALSE;
+        valf3_ileri:=FALSE;
+        valf1_geri:=FALSE;
+        valf2_geri:=FALSE;
+        valf3_geri:=TRUE; // V3 Geri
+        TIMER4(IN:=TRUE, PT:=T#1S);
+        IF TIMER4.Q THEN
+            TIMER4.IN:=FALSE;
+            sayi:=0; // Her şey geri geldi, sistemi 0 (bekleme) konumuna al
+        END_IF
+
+END_CASE
+
+
+
+
+
